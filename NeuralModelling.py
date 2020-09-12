@@ -28,27 +28,33 @@ from tensorflow import keras
 import os
 import tensorboard
 from datetime import datetime 
-tf.config.list_physical_devices('GPU')
+from xgboost import XGBClassifier
+print(tf.config.list_physical_devices('GPU'))
+
 
 # %%
 print(tf.__version__)
-print(tf.keras.__version__)
 
+# %%
+import winsound
+frequency = 2500  # Set Frequency To 2500 Hertz
+duration = 1000  # Set Duration To 1000 ms == 1 second
+winsound.Beep(frequency, duration)
 # %% Tensorboard
 logdir="logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
 
 # %% Wandb Setup
-!wandb login fecf0f8ecccbce95a5bd0d2ce6b8cfb12b90bd0b --relogin
+#!wandb login fecf0f8ecccbce95a5bd0d2ce6b8cfb12b90bd0b --relogin
 import wandb
 from wandb import util
 from wandb.keras import WandbCallback
 wandb.init(project="nids")
 config = wandb.config
-config.learning_rate = 0.0009
-config.batch_size = 1024
+config.learning_rate = 0.0006
+config.batch_size = 2048
 config.optimizer = 'adam'
-config.epochs=250
+config.epochs=300
 
 # %% Load Dataset
 df=pd.read_csv("D:/Semester5Project/datasetnorm.csv")
@@ -82,10 +88,27 @@ y_test=pd.get_dummies(y_test)
 # %% Decision Tree Model Fitting
 model=DecisionTreeClassifier(random_state=42)
 model.fit(X_train,y_train)
+winsound.Beep(frequency, duration)
 
 # %% Random Forest Classfier
-model1=RandomForestClassifier(n_estimators=120,random_state=42,verbose=3,n_jobs=3)
+model1=RandomForestClassifier(n_estimators=120,random_state=42,verbose=3,n_jobs=3,)
 model1.fit(X_train,y_train)
+winsound.Beep(frequency, duration)
+
+# %% XGBoost (test binary logistic and softmax WITHOUT scale)
+model=XGBClassifier(verbosity=2,
+                    predictor='gpu_predictor',
+                    objective='multi:softmax',
+                    num_class=2)
+modelx=XGBClassifier(verbosity=2,
+                    predictor='gpu_predictor',
+                    objective='binary:logistic')
+
+# %%
+# %% XGBoost Fitting
+model.fit(X_train,y_train,verbose=True)
+winsound.Beep(frequency, duration)
+
 #%% Grid Search CV
 parameters_dt={'splitter':['best'],
             'max_depth':[i for i in range(6,30)],
@@ -93,30 +116,44 @@ parameters_dt={'splitter':['best'],
             }
 parameters_rfc={'max_depth':[i for i in range(8,12)],
                 'n_estimators':[i for i in range(110,140,2)]}
-grid=GridSearchCV(model,parameters_dt,n_jobs=3,verbose=8)
+parameters_xgb={'predictor':'gpu_predictor',
+                'objective': 'multi:softmax',
+                'n_estimators': [400, 700, 1000],
+                'colsample_bytree': [0.7, 0.8,0.9,1],
+                'max_depth': [i for i in range(7,25)],
+                'reg_alpha': [1.1, 1.2, 1.3],
+                'reg_lambda': [1.1, 1.2, 1.3],
+                'subsample': [0.7, 0.8, 0.9],
+                'learning_rate':[0.1,0.2,0.3,0.4,0.5],
+                'scale_pos_weight':[i for i in range(100,130)]}
+grid=GridSearchCV(model,parameters_xgb,verbose=8)
 grid.fit(X_train,y_train)
+winsound.Beep(frequency, duration)
 
 # %% Grid Search CV Results
 print(grid.best_params_)
+print(grid.best_score_)
+winsound.Beep(frequency, duration)
 # %% Accuracy Score
 trainacc=accuracy_score(y_train,model.predict(X_train))
 testacc=accuracy_score(y_test,model.predict(X_test))
 print(f"\nAccuracy on testing set: {testacc}")
 print(f"\nAccuracy on training set: {trainacc}")
+winsound.Beep(frequency, duration)
 
 # %% Keras N.N Model
 cvscores=[]
 def baseline_model():
     model=models.Sequential()
     model.add(layers.Dense(420,input_shape=X_train.shape,kernel_initializer='LecunNormal'))
-    model.add(layers.Dropout(0.25, noise_shape=None, seed=42))
+    model.add(layers.Dropout(0.22, noise_shape=None, seed=42))
     model.add(layers.Dense(308,activation='selu'))
     model.add(layers.Dense(188,activation='selu'))
-    model.add(layers.Dropout(0.15, noise_shape=None, seed=7))
+    model.add(layers.Dropout(0.12, noise_shape=None, seed=7))
     model.add(layers.Dense(108,activation='selu'))
     model.add(layers.Dense(38,activation='selu'))
-    model.add(layers.Dropout(0.125, noise_shape=None, seed=42))
-    model.add(layers.Dense(1,activation='selu'))
+    model.add(layers.Dropout(0.095, noise_shape=None, seed=42))
+    model.add(layers.Dense(2,activation='softmax'))
     return model
 
 
@@ -138,10 +175,11 @@ for train_index,test_index in KFold(3).split(X):
 model=baseline_model()
 earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10,restore_best_weights=True)
 opt = Adam(learning_rate=config.learning_rate)
-model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
 model.fit(X_train,y_train,validation_data=(X_test, y_test),epochs=config.epochs,batch_size=config.batch_size,
           callbacks=[WandbCallback(),earlystop])
 #Add tensorboard_callback in callbacks for graph
+winsound.Beep(frequency, duration)
     
 
 
@@ -161,10 +199,16 @@ plt.legend()
 
 plt.show()
 
-# %% Accuracy
+# %% Neural Model Accuracy
 _, accuracy = model.evaluate(X_train, y_train)
 _, accuracy1 = model.evaluate(X_test, y_test)
 print(model.summary())
+print('(Train) Accuracy: %.2f' % (accuracy*100))
+print('(Test) Accuracy: %.2f' % (accuracy1*100))
+
+# %% DT Model Accuracy
+accuracy = accuracy_score(y_train,model.predict(X_train))
+accuracy1 = accuracy_score(y_test,model.predict(X_test))
 print('(Train) Accuracy: %.2f' % (accuracy*100))
 print('(Test) Accuracy: %.2f' % (accuracy1*100))
 
@@ -194,25 +238,24 @@ gc.collect()
 
 # %% ROC plots and results
 #Calculate False Positive Rate and True Positive Rate for y_test
-for i in range(0,10):
-    fpr1, tpr1, thresh1 = roc_curve(y_test.iloc[:,i], model.predict_proba(X_test)[:,i], pos_label=1)
-    random_probs = [0 for i in range(len(y_test))]
-    p_fpr, p_tpr, _ = roc_curve(y_test.iloc[:,i], random_probs, pos_label=1)
+fpr1, tpr1, thresh1 = roc_curve(y_test.iloc[:,1, model.predict_proba(X_test)[:,1], pos_label=1)
+random_probs = [0 for i in range(len(y_test))]
+p_fpr, p_tpr, _ = roc_curve(y_test.iloc[:,1], random_probs, pos_label=1)
     
-    import matplotlib.pyplot as plt
-    plt.style.use('seaborn')
-    plt.plot(fpr1, tpr1, linestyle='--',color='red', label='Model 3')
-    plt.plot(p_fpr, p_tpr, linestyle='-.', color='blue')
-    plt.title('ROC curve')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive rate')
-    plt.legend(loc='best')
-    plt.show();
+import matplotlib.pyplot as plt
+plt.style.use('seaborn')
+plt.plot(fpr1, tpr1, linestyle='--',color='red', label='Model 3')
+plt.plot(p_fpr, p_tpr, linestyle='-.', color='blue')
+plt.title('ROC curve')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive rate')
+plt.legend(loc='best')
+plt.show();
     
     #Print ROC-AUC scores for both models
-    auc_score1 = roc_auc_score(y_test.iloc[:,i], model.predict_proba(X_test)[:,i])
+auc_score1 = roc_auc_score(y_test.iloc[:,1], model.predict_proba(X_test)[:,1])
     
-    print("ROC-AUC Score - ",auc_score1)
+print("ROC-AUC Score - ",auc_score1)
 
 # %% Model Outputs
 
