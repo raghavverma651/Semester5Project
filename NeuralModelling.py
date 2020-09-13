@@ -29,10 +29,14 @@ import os
 import tensorboard
 from datetime import datetime 
 from xgboost import XGBClassifier
+import xgboost as xgb
+import graphviz
+from sklearn import tree
 print(tf.config.list_physical_devices('GPU'))
 
 
 # %%
+!pip install graphviz
 print(tf.__version__)
 
 # %%
@@ -70,6 +74,9 @@ del df
 gc.collect()
 gc.collect()
 
+# %% scale pos
+print(y_train.value_counts().loc[0]/y_train.value_counts().loc[1])
+
 # %% Train Test Splitting
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, random_state = 42)
 del X
@@ -96,18 +103,33 @@ model1.fit(X_train,y_train)
 winsound.Beep(frequency, duration)
 
 # %% XGBoost (test binary logistic and softmax WITHOUT scale)
-model=XGBClassifier(verbosity=2,
-                    predictor='gpu_predictor',
+model=XGBClassifier(predictor='gpu_predictor',
                     objective='multi:softmax',
-                    num_class=2)
-modelx=XGBClassifier(verbosity=2,
-                    predictor='gpu_predictor',
-                    objective='binary:logistic')
+                    scale_pos_weight=6.89916078386075,
+                    n_estimators=200,
+                    max_depth=9,
+                    num_class=2,
+                    verbosity=3)
 
-# %%
 # %% XGBoost Fitting
 model.fit(X_train,y_train,verbose=True)
+trainacc=accuracy_score(y_train,model.predict(X_train))
+testacc=accuracy_score(y_test,model.predict(X_test))
+print(f"\nAccuracy on testing set: {testacc}")
+print(f"\nAccuracy on training set: {trainacc}")
 winsound.Beep(frequency, duration)
+
+# %% XGBoost Feature Plot
+plt.style.use('seaborn')
+xgb.plot_importance(model, importance_type='gain',height=5.2)
+fig = plt.gcf()
+fig.set_size_inches(350, 200)
+
+# %% Tree Plot
+xgb.plot_tree(model, num_trees=0,rankdir='LR')
+fig = plt.gcf()
+fig.set_size_inches(400, 500)
+fig.savefig('abc.png')
 
 #%% Grid Search CV
 parameters_dt={'splitter':['best'],
@@ -116,17 +138,10 @@ parameters_dt={'splitter':['best'],
             }
 parameters_rfc={'max_depth':[i for i in range(8,12)],
                 'n_estimators':[i for i in range(110,140,2)]}
-parameters_xgb={'predictor':'gpu_predictor',
-                'objective': 'multi:softmax',
-                'n_estimators': [400, 700, 1000],
-                'colsample_bytree': [0.7, 0.8,0.9,1],
+parameters_xgb={'n_estimators': [100,250,400, 700, 1000],
                 'max_depth': [i for i in range(7,25)],
-                'reg_alpha': [1.1, 1.2, 1.3],
-                'reg_lambda': [1.1, 1.2, 1.3],
-                'subsample': [0.7, 0.8, 0.9],
-                'learning_rate':[0.1,0.2,0.3,0.4,0.5],
-                'scale_pos_weight':[i for i in range(100,130)]}
-grid=GridSearchCV(model,parameters_xgb,verbose=8)
+                }
+grid=GridSearchCV(model,parameters_xgb,verbose=10)
 grid.fit(X_train,y_train)
 winsound.Beep(frequency, duration)
 
