@@ -22,7 +22,7 @@ from sklearn.model_selection import cross_val_score
 import tensorflow as tf
 from sklearn.metrics import roc_curve,roc_auc_score
 from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adamax
 from tensorflow.keras.utils import plot_model
 from tensorflow import keras
 import os
@@ -32,6 +32,7 @@ from xgboost import XGBClassifier
 import xgboost as xgb
 import graphviz
 from sklearn import tree
+from sklearn.metrics import confusion_matrix
 print(tf.config.list_physical_devices('GPU'))
 
 
@@ -74,28 +75,22 @@ del df
 gc.collect()
 gc.collect()
 
-# %% scale pos
-print(y_train.value_counts().loc[0]/y_train.value_counts().loc[1])
-
 # %% Train Test Splitting
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, random_state = 42)
 del X
 del y
 gc.collect()
 
-# %% One Hot Encoding Output
-y_train=pd.get_dummies(y_train)
-y_test=pd.get_dummies(y_test)
-
-# %%
-#X_train=X_train.values
-#y_train=y_train.values
-#X_test=X_test.values
-#y_test=y_test.values
 # %% Decision Tree Model Fitting
 model=DecisionTreeClassifier(random_state=42)
 model.fit(X_train,y_train)
 winsound.Beep(frequency, duration)
+
+# %% DT Model Accuracy
+accuracy = accuracy_score(y_train,model.predict(X_train))
+accuracy1 = accuracy_score(y_test,model.predict(X_test))
+print('(Train) Accuracy: %.2f' % (accuracy*100))
+print('(Test) Accuracy: %.2f' % (accuracy1*100))
 
 # %% Random Forest Classfier
 model1=RandomForestClassifier(n_estimators=120,random_state=42,verbose=3,n_jobs=3,)
@@ -103,18 +98,18 @@ model1.fit(X_train,y_train)
 winsound.Beep(frequency, duration)
 
 # %% XGBoost (test binary logistic and softmax WITHOUT scale)
-model=XGBClassifier(predictor='gpu_predictor',
+model2=XGBClassifier(predictor='gpu_predictor',
                     objective='multi:softmax',
                     scale_pos_weight=6.89916078386075,
-                    n_estimators=300,
-                    max_depth=10,
+                    n_estimators=400,
+                    max_depth=11,
                     num_class=2,
                     verbosity=3)
 
 # %% XGBoost Fitting
-model.fit(X_train,y_train,verbose=True)
-trainacc=accuracy_score(y_train,model.predict(X_train))
-testacc=accuracy_score(y_test,model.predict(X_test))
+model2.fit(X_train,y_train,verbose=True)
+trainacc=accuracy_score(y_train,model2.predict(X_train))
+testacc=accuracy_score(y_test,model2.predict(X_test))
 print(f"\nAccuracy on testing set: {testacc}")
 print(f"\nAccuracy on training set: {trainacc}")
 winsound.Beep(frequency, duration)
@@ -131,30 +126,6 @@ fig = plt.gcf()
 fig.set_size_inches(400, 500)
 fig.savefig('abc.png')
 
-#%% Grid Search CV
-parameters_dt={'splitter':['best'],
-            'max_depth':[i for i in range(6,30)],
-            'random_state':[42]
-            }
-parameters_rfc={'max_depth':[i for i in range(8,12)],
-                'n_estimators':[i for i in range(110,140,2)]}
-parameters_xgb={'n_estimators': [100,250,400, 700, 1000],
-                'max_depth': [i for i in range(7,25)],
-                }
-grid=GridSearchCV(model,parameters_xgb,verbose=10)
-grid.fit(X_train,y_train)
-winsound.Beep(frequency, duration)
-
-# %% Grid Search CV Results
-print(grid.best_params_)
-print(grid.best_score_)
-winsound.Beep(frequency, duration)
-# %% Accuracy Score
-trainacc=accuracy_score(y_train,model.predict(X_train))
-testacc=accuracy_score(y_test,model.predict(X_test))
-print(f"\nAccuracy on testing set: {testacc}")
-print(f"\nAccuracy on training set: {trainacc}")
-winsound.Beep(frequency, duration)
 
 # %% Keras N.N Model
 cvscores=[]
@@ -173,79 +144,48 @@ def baseline_model():
 
 
 # %% Plotting the Model
-model=baseline_model()
-plot_model(model, to_file='model.png',show_shapes=True,expand_nested=True,dpi=300)
+model3=baseline_model()
+plot_model(model3, to_file='model.png',show_shapes=True,expand_nested=True,dpi=300)
 
 # %% K-Fold Cross Val
 for train_index,test_index in KFold(3).split(X):
     X_train,X_test=X[train_index],X[test_index]
     y_train,y_test=y[train_index],y[test_index]
-    model=baseline_model()
+    model3=baseline_model()
     opt = Adam(learning_rate=0.0022)
-    model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
-    model.fit(X_train, y_train,epochs=30, batch_size=2048)
-    cvscores.append(model.evaluate(X_test, y_test)[1])
-    
-# %% Normal Fitting
-model=baseline_model()
-earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10,restore_best_weights=True)
-opt = Adam(learning_rate=config.learning_rate)
-model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
-model.fit(X_train,y_train,validation_data=(X_test, y_test),epochs=config.epochs,batch_size=config.batch_size,
-          callbacks=[WandbCallback(),earlystop])
-#Add tensorboard_callback in callbacks for graph
-winsound.Beep(frequency, duration)
-    
+    model3.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+    model3.fit(X_train, y_train,epochs=30, batch_size=2048)
+    cvscores.append(model4.evaluate(X_test, y_test)[1])
 
 
 # %% CV Scores
 for i in cvscores:
     print("acc - "+str(i))
 print("%.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
-
-# %% Plotting learning loss vs epochs
-loss_values = history.history['loss']
-epochs = range(1, len(loss_values)+1)
-
-plt.plot(epochs, loss_values, label='Training Loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-
-plt.show()
+    
+# %% Normal Fitting
+model3=baseline_model()
+earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10,restore_best_weights=True)
+opt = Adamax(learning_rate=config.learning_rate)
+model3.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
+model3.fit(X_train,y_train,validation_data=(X_test, y_test),epochs=config.epochs,batch_size=config.batch_size,
+          callbacks=[WandbCallback(),earlystop])
+#Add tensorboard_callback in callbacks for graph
+winsound.Beep(frequency, duration)
 
 # %% Neural Model Accuracy
-_, accuracy = model.evaluate(X_train, y_train)
-_, accuracy1 = model.evaluate(X_test, y_test)
+_, accuracy = model3.evaluate(X_train, y_train)
+_, accuracy1 = model3.evaluate(X_test, y_test)
 print(model.summary())
 print('(Train) Accuracy: %.2f' % (accuracy*100))
 print('(Test) Accuracy: %.2f' % (accuracy1*100))
 
-# %% DT Model Accuracy
-accuracy = accuracy_score(y_train,model.predict(X_train))
-accuracy1 = accuracy_score(y_test,model.predict(X_test))
-print('(Train) Accuracy: %.2f' % (accuracy*100))
-print('(Test) Accuracy: %.2f' % (accuracy1*100))
-
-# %% Garbage collecting memory
-gc.collect()
 
 # %% Classification Report
 print(classification_report(y_train, model.predict(X_train)))
 print()
 print(classification_report(y_test, model.predict(X_test)))
 
-# %% Dictionary for Classifying
-classes={0:'Not an Attack', 
-         1:'Exploits',
-         2:'Reconnaissance', 
-         3:'DoS',
-         4:'Generic',
-         5:'Shellcode',
-         6:'Fuzzers',
-         7:'Worms', 
-         8:'Backdoors',
-         9:'Analysis'}
 
 # %% Delete stuff from memory
 del [X_train,y_train,X_test,y_test]
@@ -300,3 +240,33 @@ weighted avg       1.00      1.00      1.00   1778030
    macro avg       0.99      0.99      0.99    762013
 weighted avg       1.00      1.00      1.00    762013
 '''
+
+# %%
+bst = xgb.Booster({'nthread': 4})
+bst.load_model("D:\Semester5Project\model1.model")
+
+# %%
+train=confusion_matrix(y_test,bst.predict(xgb.DMatrix(X_test)))
+test=confusion_matrix(y_train,bst.predict(xgb.DMatrix(X_train)))
+
+        
+# %%
+#[[664946    875]
+#[  1050  95142]]
+tn1=train[0][0]
+fp1=train[0][1]
+tp1=train[1][1]
+fn1=train[1][0]
+tn2=test[0][0]
+fp2=test[0][1]
+tp2=test[1][1]
+fn2=test[1][0]
+
+# %%
+print("Test DR - "+(str(tp1/(tp1+fn1))))
+print("Test FAR - "+(str((fp1+fn1)/(fp1+tp1+fn1+tn1))))
+print()
+print("Train DR - "+(str(tp2/(tp2+fn2))))
+print("Train FAR - "+(str((fp2+fn2)/(fp2+tp2+fn2+tn2))))
+
+# %%
