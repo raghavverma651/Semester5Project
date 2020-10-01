@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # %% Import Libraries
 import pandas as pd
 import numpy as np
@@ -14,8 +15,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from tensorflow.keras import models
 from tensorflow.keras import layers
-from tensorflow.keras.initializers import Constant
-from tensorflow.keras.layers import PReLU
 from sklearn.model_selection import KFold
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_val_score
@@ -32,6 +31,7 @@ from xgboost import XGBClassifier
 import xgboost as xgb
 import graphviz
 from sklearn import tree
+from sklearn.feature_selection import RFECV
 from sklearn.metrics import confusion_matrix
 print(tf.config.list_physical_devices('GPU'))
 
@@ -62,14 +62,15 @@ config.optimizer = 'adam'
 config.epochs=300
 
 # %% Load Dataset
-df=pd.read_csv("D:/Semester5Project/datasetnorm.csv")
+df=pd.read_csv("D:/Semester5Project/datasetnorm1.csv")
 df.drop(columns=["Unnamed: 0"],inplace=True)
+df.drop(index=df[df.duplicated()].index,inplace=True)
 
 # %% Adding column
 df['Label']= np.where(df['attack_cat']==0, 0, 1)
 
 # %% Seperating Dataset into X and y
-X=df.drop(columns=['attack_cat','Label'])
+X=df.drop(columns=['Label','attack_cat'])
 y=df['Label']
 del df
 gc.collect()
@@ -80,6 +81,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, rand
 del X
 del y
 gc.collect()
+
+# %% 
+print(pd.concat([y_train,y_test]).value_counts())
 
 # %% Decision Tree Model Fitting
 model=DecisionTreeClassifier(random_state=42)
@@ -100,9 +104,9 @@ winsound.Beep(frequency, duration)
 # %% XGBoost (test binary logistic and softmax WITHOUT scale)
 model2=XGBClassifier(predictor='gpu_predictor',
                     objective='multi:softmax',
-                    scale_pos_weight=6.89916078386075,
-                    n_estimators=400,
-                    max_depth=11,
+                    n_estimators=2,
+                    scale_pos_weight=20,
+                    max_depth=9,
                     num_class=2,
                     verbosity=3)
 
@@ -113,6 +117,16 @@ testacc=accuracy_score(y_test,model2.predict(X_test))
 print(f"\nAccuracy on testing set: {testacc}")
 print(f"\nAccuracy on training set: {trainacc}")
 winsound.Beep(frequency, duration)
+
+# %% RFECV
+dt=DecisionTreeClassifier(max_depth=10,random_state=42)
+rfecv=RFECV(estimator=dt, step=1, cv=10, scoring='accuracy')
+rfecv=rfecv.fit(X_train,y_train)
+X_train_rfecv = rfecv.transform(X_train)
+X_test_rfecv = rfecv.transform(X_test)
+dt.fit(X_train_rfecv,y_train)
+winsound.Beep(frequency, duration)
+print(accuracy_score(y_test,dt.predict(X_test)))
 
 # %% XGBoost Feature Plot
 plt.style.use('seaborn')
@@ -182,9 +196,9 @@ print('(Test) Accuracy: %.2f' % (accuracy1*100))
 
 
 # %% Classification Report
-print(classification_report(y_train, model.predict(X_train)))
+print(classification_report(y_train, model2.predict(X_train)))
 print()
-print(classification_report(y_test, model.predict(X_test)))
+print(classification_report(y_test, model2.predict(X_test)))
 
 
 # %% Delete stuff from memory
@@ -268,5 +282,3 @@ print("Test FAR - "+(str((fp1+fn1)/(fp1+tp1+fn1+tn1))))
 print()
 print("Train DR - "+(str(tp2/(tp2+fn2))))
 print("Train FAR - "+(str((fp2+fn2)/(fp2+tp2+fn2+tn2))))
-
-# %%
