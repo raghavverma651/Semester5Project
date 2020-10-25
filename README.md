@@ -1,2 +1,3 @@
-# Link to Research Papers
-https://drive.google.com/file/d/1Bjv_9W0mSyGS8timd_qJ6vSDIrpBmjfs/view?usp=sharing
+# Notes
+- Upload your CSVs of features to your respective branches.
+- The number doesn't matter just upload whatever you have got at any point (git add, commit and push)
