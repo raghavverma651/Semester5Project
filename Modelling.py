@@ -34,7 +34,7 @@ from sklearn import tree
 from sklearn.feature_selection import RFECV
 from sklearn.metrics import confusion_matrix
 print(tf.config.list_physical_devices('GPU'))
-
+asdasdasd
 
 # %%
 !pip install graphviz
