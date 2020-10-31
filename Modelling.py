@@ -74,7 +74,7 @@ everything=pd.DataFrame({'Models':['Neural Network','KNN','SVM','Decision Tree',
 # %%#
 #everything.set_index('Models',inplace=True)
 
-everything=pd.read_pickle(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle')
+everything=pd.read_pickle(r'C:\Users\RAGHAV VERMA\results.pickle')
 print(everything.loc['Random Forest Classifier'])
 
 # %% Wandb Setup
@@ -231,26 +231,55 @@ everything.loc['KNN']['Recall for Attack (Test)']=crtest['1.0']['recall']
 everything.loc['KNN']['F1 Score for Attack (Train)']=crtrain['1.0']['f1-score']
 everything.loc['KNN']['F1 Score for Attack (Test)']=crtest['1.0']['f1-score']
 print(everything.loc['KNN'])
-with open('results.pickle','wb') as f:
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
 
 # %% XGBoost 
-model2=XGBClassifier(predictor='gpu_predictor',
+model=XGBClassifier(predictor='gpu_predictor',
                     objective='multi:softmax',
-                    n_estimators=2,
+                    n_estimators=300,
                     scale_pos_weight=20,
                     max_depth=9,
                     num_class=2,
                     verbosity=3)
 
 # %% XGBoost Fitting
-model2.fit(X_train,y_train,verbose=True)
-trainacc=accuracy_score(y_train,model2.predict(X_train))
-testacc=accuracy_score(y_test,model2.predict(X_test))
-print(f"\nAccuracy on testing set: {testacc}")
-print(f"\nAccuracy on training set: {trainacc}")
+model.fit(X_train,y_train,verbose=True)
+everything.loc['XGBoost']['Training Accuracy']=accuracy_score(y_train,model.predict(X_train))*100
+everything.loc['XGBoost']['Testing Accuracy']=accuracy_score(y_test,model.predict(X_test))*100
+train=confusion_matrix(y_train,model.predict(X_train))
+test=confusion_matrix(y_test,model.predict(X_test))
+tn1=train[0][0]
+fp1=train[0][1]
+tp1=train[1][1]
+fn1=train[1][0]
+tn2=test[0][0]
+fp2=test[0][1]
+tp2=test[1][1]
+fn2=test[1][0]
+everything.loc['XGBoost']['Training DR']=(tp2/(tp2+fn2))
+everything.loc['XGBoost']['Training FAR']=((fp2+fn2)/(fp2+tp2+fn2+tn2))
+everything.loc['XGBoost']['Testing DR']=(tp1/(tp1+fn1))
+everything.loc['XGBoost']['Testing FAR']=((fp1+fn1)/(fp1+tp1+fn1+tn1))
+crtrain=classification_report(y_train,model.predict(X_train),output_dict=True)
+crtest=classification_report(y_test,model.predict(X_test),output_dict=True)
+everything.loc['XGBoost']['Precision for No Attack (Train)']=crtrain['0.0']['precision']
+everything.loc['XGBoost']['Precision for No Attack (Test)']=crtest['0.0']['precision']
+everything.loc['XGBoost']['Recall for No Attack (Train)']=crtrain['0.0']['recall']
+everything.loc['XGBoost']['Recall for No Attack (Test)']=crtest['0.0']['recall']
+everything.loc['XGBoost']['F1 Score for No Attack (Train)']=crtrain['0.0']['f1-score']
+everything.loc['XGBoost']['F1 Score for No Attack (Test)']=crtest['0.0']['f1-score']
+everything.loc['XGBoost']['Precision for Attack (Train)']=crtrain['1.0']['precision']
+everything.loc['XGBoost']['Precision for Attack (Test)']=crtest['1.0']['precision']
+everything.loc['XGBoost']['Recall for Attack (Train)']=crtrain['1.0']['recall']
+everything.loc['XGBoost']['Recall for Attack (Test)']=crtest['1.0']['recall']
+everything.loc['XGBoost']['F1 Score for Attack (Train)']=crtrain['1.0']['f1-score']
+everything.loc['XGBoost']['F1 Score for Attack (Test)']=crtest['1.0']['f1-score']
+print(everything.loc['XGBoost'])
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
+    pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
 # %% RFECV
@@ -390,5 +419,10 @@ weighted avg       1.00      1.00      1.00   1778030
 weighted avg       1.00      1.00      1.00    762013
 '''
 
-# %% Read the Results.pickle
-results=pd.read_pickle(r'res')
+# %% Save the XGB Model
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\model.pickle','wb') as f:
+    pickle.dump(model,f)
+    
+# %% Load the XGB Model
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\model.pickle','wb') as f:
+    model=pickle.load(f)
