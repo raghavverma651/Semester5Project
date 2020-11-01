@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import sklearn
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression,SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report
@@ -35,6 +35,7 @@ from sklearn.feature_selection import RFECV
 from sklearn.metrics import confusion_matrix
 from sklearn.impute import SimpleImputer
 from sklearn.neighbors import KNeighborsClassifier
+from tensorflow.keras.utils import to_categorical 
 import pickle
 print(tf.config.list_physical_devices('GPU'))
 
@@ -74,8 +75,8 @@ everything=pd.DataFrame({'Models':['Neural Network','KNN','SVM','Decision Tree',
 # %%#
 #everything.set_index('Models',inplace=True)
 
-everything=pd.read_pickle(r'C:\Users\RAGHAV VERMA\results.pickle')
-print(everything.loc['Random Forest Classifier'])
+everything=pd.read_pickle(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle')
+print(everything)
 
 # %% Wandb Setup
 #!wandb login fecf0f8ecccbce95a5bd0d2ce6b8cfb12b90bd0b --relogin
@@ -84,10 +85,10 @@ from wandb import util
 from wandb.keras import WandbCallback
 wandb.init(project="nids")
 config = wandb.config
-config.learning_rate = 0.0006
+config.learning_rate = 0.0012
 config.batch_size = 2048
 config.optimizer = 'adam'
-config.epochs=300
+config.epochs=200
 
 # %% Load Dataset
 df=pd.read_csv("D:/Semester5Project/datasetnorm.csv")
@@ -198,7 +199,7 @@ with open('results.pickle','wb') as f:
 winsound.Beep(frequency, duration)
 
 # %% KNN
-model=KNeighborsClassifier(n_neighbors=6,n_jobs=3)
+model=KNeighborsClassifier(n_neighbors=6,n_jobs=-1)
 model.fit(X_train,y_train)
 everything.loc['KNN']['Training Accuracy']=accuracy_score(y_train,model.predict(X_train))*100
 everything.loc['KNN']['Testing Accuracy']=accuracy_score(y_test,model.predict(X_test))*100
@@ -218,18 +219,18 @@ everything.loc['KNN']['Testing DR']=(tp1/(tp1+fn1))
 everything.loc['KNN']['Testing FAR']=((fp1+fn1)/(fp1+tp1+fn1+tn1))
 crtrain=classification_report(y_train,model.predict(X_train),output_dict=True)
 crtest=classification_report(y_test,model.predict(X_test),output_dict=True)
-everything.loc['KNN']['Precision for No Attack (Train)']=crtrain['0.0']['precision']
-everything.loc['KNN']['Precision for No Attack (Test)']=crtest['0.0']['precision']
-everything.loc['KNN']['Recall for No Attack (Train)']=crtrain['0.0']['recall']
-everything.loc['KNN']['Recall for No Attack (Test)']=crtest['0.0']['recall']
-everything.loc['KNN']['F1 Score for No Attack (Train)']=crtrain['0.0']['f1-score']
-everything.loc['KNN']['F1 Score for No Attack (Test)']=crtest['0.0']['f1-score']
-everything.loc['KNN']['Precision for Attack (Train)']=crtrain['1.0']['precision']
-everything.loc['KNN']['Precision for Attack (Test)']=crtest['1.0']['precision']
-everything.loc['KNN']['Recall for Attack (Train)']=crtrain['1.0']['recall']
-everything.loc['KNN']['Recall for Attack (Test)']=crtest['1.0']['recall']
-everything.loc['KNN']['F1 Score for Attack (Train)']=crtrain['1.0']['f1-score']
-everything.loc['KNN']['F1 Score for Attack (Test)']=crtest['1.0']['f1-score']
+everything.loc['KNN']['Precision for No Attack (Train)']=crtrain['0']['precision']
+everything.loc['KNN']['Precision for No Attack (Test)']=crtest['0']['precision']
+everything.loc['KNN']['Recall for No Attack (Train)']=crtrain['0']['recall']
+everything.loc['KNN']['Recall for No Attack (Test)']=crtest['0']['recall']
+everything.loc['KNN']['F1 Score for No Attack (Train)']=crtrain['0']['f1-score']
+everything.loc['KNN']['F1 Score for No Attack (Test)']=crtest['0']['f1-score']
+everything.loc['KNN']['Precision for Attack (Train)']=crtrain['1']['precision']
+everything.loc['KNN']['Precision for Attack (Test)']=crtest['1']['precision']
+everything.loc['KNN']['Recall for Attack (Train)']=crtrain['1']['recall']
+everything.loc['KNN']['Recall for Attack (Test)']=crtest['1']['recall']
+everything.loc['KNN']['F1 Score for Attack (Train)']=crtrain['1']['f1-score']
+everything.loc['KNN']['F1 Score for Attack (Test)']=crtest['1']['f1-score']
 print(everything.loc['KNN'])
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
@@ -282,6 +283,45 @@ with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
+# %% SVM Fitting
+model=SGDClassifier(loss='squared_hinge',n_jobs=3,random_state=42)
+model.fit(X_train,y_train)
+everything.loc['SVM']['Training Accuracy']=accuracy_score(y_train,model.predict(X_train))*100
+everything.loc['SVM']['Testing Accuracy']=accuracy_score(y_test,model.predict(X_test))*100
+train=confusion_matrix(y_train,model.predict(X_train))
+test=confusion_matrix(y_test,model.predict(X_test))
+tn1=train[0][0]
+fp1=train[0][1]
+tp1=train[1][1]
+fn1=train[1][0]
+tn2=test[0][0]
+fp2=test[0][1]
+tp2=test[1][1]
+fn2=test[1][0]
+everything.loc['SVM']['Training DR']=(tp2/(tp2+fn2))
+everything.loc['SVM']['Training FAR']=((fp2+fn2)/(fp2+tp2+fn2+tn2))
+everything.loc['SVM']['Testing DR']=(tp1/(tp1+fn1))
+everything.loc['SVM']['Testing FAR']=((fp1+fn1)/(fp1+tp1+fn1+tn1))
+crtrain=classification_report(y_train,model.predict(X_train),output_dict=True)
+crtest=classification_report(y_test,model.predict(X_test),output_dict=True)
+everything.loc['SVM']['Precision for No Attack (Train)']=crtrain['0']['precision']
+everything.loc['SVM']['Precision for No Attack (Test)']=crtest['0']['precision']
+everything.loc['SVM']['Recall for No Attack (Train)']=crtrain['0']['recall']
+everything.loc['SVM']['Recall for No Attack (Test)']=crtest['0']['recall']
+everything.loc['SVM']['F1 Score for No Attack (Train)']=crtrain['0']['f1-score']
+everything.loc['SVM']['F1 Score for No Attack (Test)']=crtest['0']['f1-score']
+everything.loc['SVM']['Precision for Attack (Train)']=crtrain['1']['precision']
+everything.loc['SVM']['Precision for Attack (Test)']=crtest['1']['precision']
+everything.loc['SVM']['Recall for Attack (Train)']=crtrain['1']['recall']
+everything.loc['SVM']['Recall for Attack (Test)']=crtest['1']['recall']
+everything.loc['SVM']['F1 Score for Attack (Train)']=crtrain['1']['f1-score']
+everything.loc['SVM']['F1 Score for Attack (Test)']=crtest['1']['f1-score']
+print(everything.loc['SVM'])
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
+    pickle.dump(everything,f)
+winsound.Beep(frequency, duration)
+
+
 # %% RFECV
 dt=DecisionTreeClassifier(max_depth=10,random_state=42)
 rfecv=RFECV(estimator=dt, step=1, cv=10, scoring='accuracy')
@@ -306,49 +346,71 @@ fig.savefig('abc.png')
 
 
 # %% Keras N.N Model
-cvscores=[]
 def baseline_model():
     model=models.Sequential()
-    model.add(layers.Dense(420,input_shape=X_train.shape,kernel_initializer='LecunNormal'))
+    model.add(layers.Dense(140,input_shape=X_train.shape,kernel_initializer='LecunNormal'))
     model.add(layers.Dropout(0.22, noise_shape=None, seed=42))
-    model.add(layers.Dense(308,activation='selu'))
-    model.add(layers.Dense(188,activation='selu'))
-    model.add(layers.Dropout(0.12, noise_shape=None, seed=7))
-    model.add(layers.Dense(108,activation='selu'))
-    model.add(layers.Dense(38,activation='selu'))
+    model.add(layers.Dense(140,activation='selu'))
+    model.add(layers.Dropout(0.17, noise_shape=None, seed=42))
+    model.add(layers.Dense(140,activation='selu'))
+    model.add(layers.Dropout(0.13, noise_shape=None, seed=7))
+    model.add(layers.Dense(140,activation='selu'))
     model.add(layers.Dropout(0.095, noise_shape=None, seed=42))
+    model.add(layers.Dense(140,activation='selu'))
+    model.add(layers.Dropout(0.06, noise_shape=None, seed=42))
     model.add(layers.Dense(2,activation='softmax'))
     return model
 
-
-# %% Plotting the Model
-model3=baseline_model()
-plot_model(model3, to_file='model.png',show_shapes=True,expand_nested=True,dpi=300)
-
-# %% K-Fold Cross Val
-for train_index,test_index in KFold(3).split(X):
-    X_train,X_test=X[train_index],X[test_index]
-    y_train,y_test=y[train_index],y[test_index]
-    model3=baseline_model()
-    opt = Adam(learning_rate=0.0022)
-    model3.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
-    model3.fit(X_train, y_train,epochs=30, batch_size=2048)
-    cvscores.append(model4.evaluate(X_test, y_test)[1])
-
-
-# %% CV Scores
-for i in cvscores:
-    print("acc - "+str(i))
-print("%.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
-    
-# %% Normal Fitting
-model3=baseline_model()
-earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10,restore_best_weights=True)
-opt = Adamax(learning_rate=config.learning_rate)
-model3.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
-model3.fit(X_train,y_train,validation_data=(X_test, y_test),epochs=config.epochs,batch_size=config.batch_size,
-          callbacks=[WandbCallback(),earlystop])
+y_train = to_categorical(y_train, dtype ="uint8") 
+y_test = to_categorical(y_test, dtype ="uint8") 
+model=baseline_model()
+earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=12,restore_best_weights=True)
+opt = Adamax(learning_rate=0.0012)
+model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
+model.fit(X_train,y_train,validation_data=(X_test, y_test),epochs=250,batch_size=2048,
+          callbacks=[earlystop])
 #Add tensorboard_callback in callbacks for graph
+y_pred_train=model.predict(X_train)
+y_pred_test=model.predict(X_test)
+y_train=np.argmax(y_train, axis=1)
+y_test=np.argmax(y_test, axis=1)
+y_pred_train=np.argmax(y_pred_train, axis=1)
+y_pred_test=np.argmax(y_pred_test, axis=1)
+trainacc=(model.evaluate(X_train,to_categorical(y_train))[1])
+testacc=(model.evaluate(X_test,to_categorical(y_test))[1])
+everything.loc['Neural Network']['Training Accuracy']=trainacc*100
+everything.loc['Neural Network']['Testing Accuracy']=testacc*100
+train=confusion_matrix(y_train,y_pred_train)
+test=confusion_matrix(y_test,y_pred_test)
+tn1=train[0][0]
+fp1=train[0][1]
+tp1=train[1][1]
+fn1=train[1][0]
+tn2=test[0][0]
+fp2=test[0][1]
+tp2=test[1][1]
+fn2=test[1][0]
+everything.loc['Neural Network']['Training DR']=(tp2/(tp2+fn2))
+everything.loc['Neural Network']['Training FAR']=((fp2+fn2)/(fp2+tp2+fn2+tn2))
+everything.loc['Neural Network']['Testing DR']=(tp1/(tp1+fn1))
+everything.loc['Neural Network']['Testing FAR']=((fp1+fn1)/(fp1+tp1+fn1+tn1))
+crtrain=classification_report(y_train,y_pred_train,output_dict=True)
+crtest=classification_report(y_test,y_pred_test,output_dict=True)
+everything.loc['Neural Network']['Precision for No Attack (Train)']=crtrain['0']['precision']
+everything.loc['Neural Network']['Precision for No Attack (Test)']=crtest['0']['precision']
+everything.loc['Neural Network']['Recall for No Attack (Train)']=crtrain['0']['recall']
+verything.loc['Neural Network']['Recall for No Attack (Test)']=crtest['0']['recall']
+everything.loc['Neural Network']['F1 Score for No Attack (Train)']=crtrain['0']['f1-score']
+everything.loc['Neural Network']['F1 Score for No Attack (Test)']=crtest['0']['f1-score']
+everything.loc['Neural Network']['Precision for Attack (Train)']=crtrain['1']['precision']
+everything.loc['Neural Network']['Precision for Attack (Test)']=crtest['1']['precision']
+everything.loc['Neural Network']['Recall for Attack (Train)']=crtrain['1']['recall']
+everything.loc['Neural Network']['Recall for Attack (Test)']=crtest['1']['recall']
+everything.loc['Neural Network']['F1 Score for Attack (Train)']=crtrain['1']['f1-score']
+everything.loc['Neural Network']['F1 Score for Attack (Test)']=crtest['1']['f1-score']
+print(everything.loc['Neural Network'])
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
+    pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
 # %% Neural Model Accuracy
