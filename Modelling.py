@@ -35,7 +35,6 @@ from sklearn import tree
 from sklearn.feature_selection import RFECV
 from sklearn.metrics import confusion_matrix
 from sklearn.impute import SimpleImputer
-from sklearn.neighbors import KNeighborsClassifier
 from tensorflow.keras.utils import to_categorical 
 import tensorflow as tf
 import numpy as np
@@ -95,10 +94,10 @@ del y
 gc.collect()
 
 # %% Logistic Regression
-model=LogisticRegression(solver='newton-cg',max_iter=300,verbose=6,n_jobs=3)
-model.fit(X_train,y_train)
-y_pred_train=model.predict(X_train)
-y_pred_test=model.predict(X_test)
+#model=LogisticRegression(solver='newton-cg',max_iter=300,verbose=6,n_jobs=3)
+#model.fit(X_train,y_train)
+#y_pred_train=model.predict(X_train)
+#y_pred_test=model.predict(X_test)
 everything.loc['Logistic Regression']['Training Accuracy']=accuracy_score(y_train,y_pred_train)*100
 everything.loc['Logistic Regression']['Testing Accuracy']=accuracy_score(y_test,y_pred_test)*100
 train=confusion_matrix(y_train,y_pred_train)
