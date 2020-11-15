@@ -57,10 +57,12 @@ print(everything)
 #with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
 #    pickle.dump(everything,f)
     
-# %% Load Dataset - 1) Dropping header column 2) Deleting duplicate values
+# %% Load Dataset - 1) Dropping header column 2) Deleting duplicate values 3) Making the new column 'Duration'
 df=pd.read_csv("D:/Semester5Project/datasetnorm.csv")
 df.drop(columns=["Unnamed: 0"],inplace=True)
 df.drop(index=df[df.duplicated()].index,inplace=True)
+df['Duration']=df['Ltime']-df['Stime']
+df.drop(columns=['Ltime','Stime'],inplace=True)
 cols=list(df.columns)
 
 # %% Imputing (mean method)
@@ -71,6 +73,7 @@ df=pd.DataFrame(df,columns=cols)
 # %% Seperating Dataset into X and y
 X=df.drop(columns=['Label'])
 y=df['Label']
+
 # For clearing memory since "df" is spatially intensive
 del df
 gc.collect()
@@ -81,11 +84,6 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, rand
 del X
 del y
 gc.collect()
-
-# %%
-model=LogisticRegression(max_iter=100,n_jobs=-1,tol=10)
-model.fit(X_train,y_train)
-print(roc_auc_score(y_test.iloc[:,1], model.predict_proba(X_test)[:,1]))
 
 # %% Logistic Regression
 model=LogisticRegression(solver='newton-cg',max_iter=300,verbose=6,n_jobs=3)
@@ -699,61 +697,75 @@ with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
-# %% ROC-AUC Scores
+# %% Model Redefintion for ROC-AUC Scores
 model=LogisticRegression(solver='newton-cg',max_iter=300,verbose=6,n_jobs=-1)
 model1=DecisionTreeClassifier(max_depth=9,random_state=42)
 model2=RandomForestClassifier(n_estimators=300,random_state=42,verbose=3,n_jobs=-1)
 model3=GaussianNB()
 estimator=RandomForestClassifier(n_estimators=3,random_state=42,verbose=3,n_jobs=-1)
 model4=AdaBoostClassifier(base_estimator=estimator,n_estimators=200,random_state=42)
-model5=XGBClassifier(predictor='gpu_predictor',objective='multi:softmax',n_estimators=350,scale_pos_weight=20,max_depth=9,num_class=2,verbosity=3)
+model5=XGBClassifier(predictor='gpu_predictor',objective='multi:softmax',n_estimators=300,scale_pos_weight=20,max_depth=9,num_class=2,verbosity=3)
 model6=SGDClassifier(loss='squared_hinge',n_jobs=3,random_state=42)
 
+# %% ROC-AUC Score for Model 1
 model.fit(X_train,y_train)
-everything.loc['Logistic Regression']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model.predict_proba(X_test)[:,1])
-print(everything['ROC-AUC Score'])
+everything.loc['Logistic Regression']['ROC-AUC Score (Train)']=roc_auc_score(y_train, model.predict_proba(X_train)[:,1])
+everything.loc['Logistic Regression']['ROC-AUC Score (Test)']=roc_auc_score(y_test, model.predict_proba(X_test)[:,1])
+print(everything[['ROC-AUC Score (Train)','ROC-AUC Score (Test))
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
+# %% ROC-AUC Score for Model 2
 model1.fit(X_train,y_train)
-everything.loc['Decision Tree Classifier']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model1.predict_proba(X_test)[:,1])
-print(everything['ROC-AUC Score'])
+everything.loc['Decision Tree']['ROC-AUC Score (Train)']=roc_auc_score(y_train, model1.predict_proba(X_train)[:,1])
+everything.loc['Decision Tree']['ROC-AUC Score (Test)']=roc_auc_score(y_test, model1.predict_proba(X_test)[:,1])
+print(everything[['ROC-AUC Score (Train)','ROC-AUC Score (Test)']])
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
+# %% ROC-AUC Score for Model 3
 model2.fit(X_train,y_train)
-everything.loc['Random Forest Classifier']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model2.predict_proba(X_test)[:,1])
-print(everything['ROC-AUC Score'])
+everything.loc['Random Forest Classifier']['ROC-AUC Score (Train)']=roc_auc_score(y_train, model2.predict_proba(X_train)[:,1])
+everything.loc['Random Forest Classifier']['ROC-AUC Score (Test)']=roc_auc_score(y_test, model2.predict_proba(X_test)[:,1])
+print(everything[['ROC-AUC Score (Train)','ROC-AUC Score (Test)']])
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
+# %% ROC-AUC Score for Model 4
 model3.fit(X_train,y_train)
-everything.loc['Naive Bayes Classifier']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model3.predict_proba(X_test)[:,1])
-print(everything['ROC-AUC Score'])
+everything.loc['Naive Bayes Classifier']['ROC-AUC Score (Train)']=roc_auc_score(y_train, model3.predict_proba(X_train)[:,1])
+everything.loc['Naive Bayes Classifier']['ROC-AUC Score (Test)']=roc_auc_score(y_test, model3.predict_proba(X_test)[:,1])
+print(everything[['ROC-AUC Score (Train)','ROC-AUC Score (Test)']])
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
+# %% ROC-AUC Score for Model 5
 model4.fit(X_train,y_train)
-everything.loc['AdaBoost Classifier']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model4.predict_proba(X_test)[:,1])
-print(everything['ROC-AUC Score'])
+everything.loc['AdaBoost Classifier']['ROC-AUC Score (Train)']=roc_auc_score(y_train, model4.predict_proba(X_train)[:,1])
+everything.loc['AdaBoost Classifier']['ROC-AUC Score (Test)']=roc_auc_score(y_test, model4.predict_proba(X_test)[:,1])
+print(everything[['ROC-AUC Score (Train)','ROC-AUC Score (Test)']])
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
+# %% ROC-AUC Score for Model 6
 model5.fit(X_train,y_train)
-everything.loc['XGBoost']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model5.predict_proba(X_test)[:,1])
-print(everything['ROC-AUC Score'])
+everything.loc['XGBoost']['ROC-AUC Score (Train)']=roc_auc_score(y_train, model5.predict_proba(X_train)[:,1])
+everything.loc['XGBoost']['ROC-AUC Score (Test)']=roc_auc_score(y_test, model5.predict_proba(X_test)[:,1])
+print(everything[['ROC-AUC Score (Train)','ROC-AUC Score (Test)']])
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
 
+# %% ROC-AUC Score for Model 7
 model6.fit(X_train,y_train)
-everything.loc['SVM']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model6.predict_proba(X_test)[:,1])
-print(everything['ROC-AUC Score'])
+everything.loc['SVM']['ROC-AUC Score (Train)']=roc_auc_score(y_train, model6.predict_proba(X_train)[:,1])
+everything.loc['SVM']['ROC-AUC Score (Test)']=roc_auc_score(y_test, model6.predict_proba(X_test)[:,1])
+print(everything[['ROC-AUC Score (Train)','ROC-AUC Score (Test)']])
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\results.pickle','wb') as f:
     pickle.dump(everything,f)
 winsound.Beep(frequency, duration)
@@ -774,15 +786,39 @@ def baseline_model():
     model.add(layers.Dense(2,activation='softmax'))
     return model
 model7=baseline_model()
-y_train = to_categorical(y_train, dtype ="uint8") 
-y_test = to_categorical(y_test, dtype ="uint8")
-everything.loc['Neural Network']['ROC-AUC Score']=roc_auc_score(y_test.iloc[:,1], model7.predict_proba(X_test)[:,1])
+earlystop = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=12,restore_best_weights=True)
+opt = Adamax(learning_rate=0.0012)
+model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
+model.fit(X_train,y_train,validation_data=(X_test, y_test),epochs=250,batch_size=2048,
+          callbacks=[earlystop,tensorboard_callback])
+everything.loc['Neural Network']['ROC-AUC Score']=roc_auc_score(y_test, model7.predict_proba(X_test)[:,1])
 print(everything['ROC-AUC Score'])
 winsound.Beep(frequency, duration)
 
-# %% Save the XGB Model
-with open(r'C:\Users\RAGHAV VERMA\Semester5Project\model.pickle','wb') as f:
+# %% Save the models
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\log.pickle','wb') as f:
     pickle.dump(model,f)
+    
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\dt.pickle','wb') as f:
+    pickle.dump(model1,f)
+    
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\rfc.pickle','wb') as f:
+    pickle.dump(model2,f)
+
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\gaussiannb.pickle','wb') as f:
+    pickle.dump(model3,f)
+    
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\adaboost.pickle','wb') as f:
+    pickle.dump(model4,f)
+    
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\xgb.pickle','wb') as f:
+    pickle.dump(model5,f)
+
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\svm.pickle','wb') as f:
+    pickle.dump(model6,f)
+    
+with open(r'C:\Users\RAGHAV VERMA\Semester5Project\nn.pickle','wb') as f:
+    pickle.dump(model7,f)
     
 # %% Load the XGB Model
 with open(r'C:\Users\RAGHAV VERMA\Semester5Project\model.pickle','wb') as f:
